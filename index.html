@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RACE ENGINEER — your seat on the pit wall</title>
+<meta name="description" content="Pick a driver. Get a race engineer. Live F1 timing, real team radio, and a voice on the wall that actually talks to you.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Martian+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --carbon:#0A0A0C; --panel:#101014; --panel2:#16161C; --line:#26262E;
+  --ink:#F2F2F0; --dim:#8C8C96; --faint:#55555F;
+  --purple:#C24DFF; --green:#2EE38A; --yellow:#FFD12E; --red:#FF3B30;
+  --team:#C24DFF; /* swapped to driver team colour at select */
+  --mono:'Martian Mono',monospace; --disp:'Anton',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--carbon);color:var(--ink);font-family:var(--mono);font-size:13px;min-height:100%}
+::selection{background:var(--team);color:#000}
+body::after{ /* broadcast scanlines + grain */
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:90;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 3px);
+  mix-blend-mode:overlay;
+}
+.wrap{max-width:1480px;margin:0 auto;padding:0 22px}
+
+/* ---------- top bar ---------- */
+header{position:sticky;top:0;z-index:50;background:rgba(10,10,12,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:18px;height:58px}
+.brand{font-family:var(--disp);font-size:22px;letter-spacing:.06em;white-space:nowrap}
+.brand em{font-style:normal;color:var(--team)}
+.sess{color:var(--dim);font-size:11px;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{font-size:10px;letter-spacing:.18em;padding:5px 10px;border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+.badge.live{border-color:var(--red);color:var(--red);animation:pulse 1.4s infinite}
+.badge.replay{border-color:var(--purple);color:var(--purple)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.spacer{flex:1}
+.tgl{background:none;border:1px solid var(--line);color:var(--dim);font-family:var(--mono);font-size:10px;letter-spacing:.14em;padding:6px 11px;cursor:pointer;transition:.15s}
+.tgl:hover{border-color:var(--team);color:var(--ink)}
+.tgl.on{border-color:var(--team);color:var(--team)}
+
+/* ---------- select screen ---------- */
+#select{padding:54px 0 80px}
+.kicker{color:var(--team);font-size:11px;letter-spacing:.3em;text-transform:uppercase}
+h1{font-family:var(--disp);font-size:clamp(44px, 30px + 4.5vw, 96px);line-height:.96;letter-spacing:.015em;text-transform:uppercase;margin:14px 0 10px}
+h1 .alt{color:var(--faint)}
+.sub{color:var(--dim);max-width:62ch;line-height:1.8;font-size:12.5px}
+.sub b{color:var(--ink);font-weight:400}
+#sessLine{margin-top:18px;color:var(--faint);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+#sessLine span{color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:10px;margin-top:42px}
+.card{position:relative;background:var(--panel);border:1px solid var(--line);padding:16px 16px 14px;cursor:pointer;overflow:hidden;transition:transform .18s, border-color .18s;min-height:158px;text-align:left}
+.card:hover{transform:translateY(-4px);border-color:var(--tc)}
+.card .num{position:absolute;right:8px;top:-12px;font-family:var(--disp);font-size:84px;color:transparent;-webkit-text-stroke:1px var(--tc);opacity:.5;line-height:1}
+.card img{width:74px;height:74px;object-fit:cover;object-position:top;filter:grayscale(.25) contrast(1.05);background:var(--panel2)}
+.card .acr{font-family:var(--disp);font-size:26px;letter-spacing:.05em;margin-top:10px}
+.card .team{display:flex;align-items:center;gap:7px;color:var(--dim);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-top:4px}
+.chip{width:10px;height:10px;background:var(--tc);flex:none}
+.card .hire{position:absolute;left:16px;bottom:-22px;font-size:10px;letter-spacing:.2em;color:var(--tc);transition:bottom .18s}
+.card:hover .hire{bottom:12px}
+.card:hover .team{opacity:0}
+#loading{margin-top:48px;color:var(--dim);font-size:12px;letter-spacing:.1em}
+#loading.err{color:var(--red)}
+
+/* ---------- pit wall ---------- */
+#wall{display:none;padding:26px 0 60px}
+.wallgrid{display:grid;grid-template-columns:230px 1fr 400px;gap:14px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--line)}
+.ph{display:flex;justify-content:space-between;align-items:center;padding:10px 13px;border-bottom:1px solid var(--line);color:var(--dim);font-size:10px;letter-spacing:.22em;text-transform:uppercase}
+.ph i{font-style:normal;color:var(--faint)}
+
+/* tower */
+#tower{max-height:calc(100vh - 170px);overflow:auto;scrollbar-width:thin}
+.trow{display:flex;align-items:center;gap:9px;padding:6.5px 12px;border-bottom:1px solid rgba(38,38,46,.5);font-size:12px}
+.trow .p{width:24px;color:var(--dim);font-size:11px}
+.trow .tchip{width:3px;height:14px;flex:none}
+.trow .a{letter-spacing:.08em}
+.trow.me{background:linear-gradient(90deg, color-mix(in srgb, var(--team) 16%, transparent), transparent);border-left:2px solid var(--team)}
+.trow.me .p{color:var(--team)}
+.trow .mv{margin-left:auto;font-size:10px}
+.up{color:var(--green)} .dn{color:var(--red)}
+
+/* hero / telemetry */
+#hero{position:relative;padding:24px 26px 22px;overflow:hidden}
+#heroNum{position:absolute;right:-10px;top:-58px;font-family:var(--disp);font-size:280px;line-height:1;color:transparent;-webkit-text-stroke:1.5px color-mix(in srgb, var(--team) 55%, transparent);opacity:.34;pointer-events:none}
+#dName{font-family:var(--disp);font-size:clamp(34px, 24px + 2vw, 58px);letter-spacing:.02em;text-transform:uppercase;line-height:1}
+#dTeam{color:var(--dim);font-size:11px;letter-spacing:.18em;text-transform:uppercase;margin-top:6px}
+#dTeam b{color:var(--team);font-weight:400}
+.tiles{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--line);border-top:1px solid var(--line);margin-top:22px}
+.tile{background:var(--panel);padding:13px 14px 12px;min-height:86px}
+.tile .l{color:var(--faint);font-size:9px;letter-spacing:.2em;text-transform:uppercase}
+.tile .v{font-family:var(--disp);font-size:30px;letter-spacing:.03em;margin-top:7px;font-variant-numeric:tabular-nums}
+.tile .s{color:var(--dim);font-size:9.5px;margin-top:4px;letter-spacing:.06em;min-height:12px}
+.v.good{color:var(--green)} .v.best{color:var(--purple)} .v.warn{color:var(--yellow)}
+/* replay deck */
+#deck{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid var(--line);flex-wrap:wrap}
+#deck .lab{color:var(--faint);font-size:9px;letter-spacing:.22em}
+.spd{background:none;border:1px solid var(--line);color:var(--dim);font-family:var(--mono);font-size:10px;padding:4px 9px;cursor:pointer}
+.spd.on{border-color:var(--team);color:var(--team)}
+#seek{flex:1;min-width:140px;accent-color:var(--team);height:3px}
+#clockTxt{color:var(--ink);font-size:11px;letter-spacing:.08em;font-variant-numeric:tabular-nums}
+
+/* radio feed */
+#feedwrap{max-height:calc(100vh - 170px);display:flex;flex-direction:column}
+#feed{overflow:auto;padding:10px 0;flex:1;scrollbar-width:thin;display:flex;flex-direction:column-reverse}
+.msg{padding:9px 14px;display:flex;gap:10px;animation:in .25s ease}
+@keyframes in{from{opacity:0;transform:translateX(8px)}to{opacity:1}}
+.msg .t{color:var(--faint);font-size:9px;white-space:nowrap;padding-top:3px;font-variant-numeric:tabular-nums}
+.msg .who{font-size:9px;letter-spacing:.16em;display:block;margin-bottom:3px}
+.msg .body{font-size:12px;line-height:1.55}
+.msg.eng .who{color:var(--team)}
+.msg.eng .body{color:var(--ink)}
+.msg.fia .who{color:var(--yellow)}
+.msg.fia .body{color:var(--dim);font-size:11px}
+.msg.radio{background:color-mix(in srgb, var(--team) 7%, transparent);border-left:2px solid var(--team);margin:2px 0}
+.msg.radio .who{color:var(--team)}
+.msg.radio audio{width:100%;height:30px;margin-top:6px;filter:invert(.9) hue-rotate(180deg)}
+.msg.sys .who{color:var(--faint)} .msg.sys .body{color:var(--dim);font-size:11px}
+
+@media(max-width:1100px){.wallgrid{grid-template-columns:1fr}#tower{max-height:260px}#feedwrap{max-height:520px}.tiles{grid-template-columns:repeat(3,1fr)}#heroNum{font-size:180px;top:-30px}}
+@media(max-width:600px){.tiles{grid-template-columns:repeat(2,1fr)}.bar{gap:9px}.sess{display:none}}
+</style>
+</head>
+<body>
+
+<header><div class="wrap bar">
+  <div class="brand">RACE<em>ENGINEER</em></div>
+  <div class="sess" id="sessTop">connecting to timing…</div>
+  <span class="badge" id="modeBadge">—</span>
+  <div class="spacer"></div>
+  <button class="tgl" id="sndTgl">BEEP OFF</button>
+  <button class="tgl" id="voxTgl">VOICE OFF</button>
+  <button class="tgl" id="backBtn" style="display:none">CHANGE DRIVER</button>
+</div></header>
+
+<section id="select"><div class="wrap">
+  <div class="kicker">openf1 live timing · real team radio</div>
+  <h1>PICK A DRIVER.<br><span class="alt">GET A RACE ENGINEER.</span></h1>
+  <p class="sub">This is your seat on the pit wall. Live sessions stream with a ~3s delay; finished sessions <b>replay</b> with the full timing record — positions, gaps, laps, FIA messages, and your driver's <b>actual team radio</b>, surfaced the moment it happened. Your engineer reads the data and talks to you like you're the one in the car.</p>
+  <div id="sessLine"></div>
+  <div class="grid" id="driverGrid"></div>
+  <div id="loading">CONNECTING TO TIMING TOWER…</div>
+</div></section>
+
+<section id="wall"><div class="wrap">
+  <div class="wallgrid">
+    <div class="panel"><div class="ph">TIMING TOWER <i id="towerN"></i></div><div id="tower"></div></div>
+    <div>
+      <div class="panel" id="hero">
+        <div id="heroNum">00</div>
+        <div id="dName">—</div>
+        <div id="dTeam">—</div>
+        <div class="tiles">
+          <div class="tile"><div class="l">Position</div><div class="v" id="tPos">—</div><div class="s" id="tPosS"></div></div>
+          <div class="tile"><div class="l">Last lap</div><div class="v" id="tLap">—</div><div class="s" id="tLapS"></div></div>
+          <div class="tile"><div class="l">Gap ahead</div><div class="v" id="tInt">—</div><div class="s">interval</div></div>
+          <div class="tile"><div class="l">Gap to leader</div><div class="v" id="tLead">—</div><div class="s" id="tLeadS"></div></div>
+          <div class="tile"><div class="l">Tyre</div><div class="v" id="tTyre">—</div><div class="s" id="tTyreS"></div></div>
+          <div class="tile"><div class="l">Speed trap</div><div class="v" id="tSpd">—</div><div class="s">km/h</div></div>
+        </div>
+        <div id="deck">
+          <span class="lab">REPLAY</span>
+          <button class="spd" data-s="1">1×</button>
+          <button class="spd on" data-s="30">30×</button>
+          <button class="spd" data-s="60">60×</button>
+          <button class="spd" data-s="120">120×</button>
+          <input type="range" id="seek" min="0" max="1000" value="0">
+          <span id="clockTxt">--:--:--</span>
+        </div>
+      </div>
+    </div>
+    <div class="panel" id="feedwrap"><div class="ph">PIT WALL RADIO <i id="feedN"></i></div><div id="feed"></div></div>
+  </div>
+</div></section>
+
+<script>
+const API='https://api.openf1.org/v1';
+const $=id=>document.getElementById(id);
+const fmtLap=s=>{if(s==null)return'—';const m=Math.floor(s/60),r=(s-m*60).toFixed(3);return m+':'+(r<10?'0':'')+r};
+const fmtGap=g=>{if(g==null)return'—';if(typeof g==='string')return g;return'+'+g.toFixed(1)};
+const gapAheadTxt=()=>S.lastIv&&typeof S.lastIv.interval==='number'?S.lastIv.interval.toFixed(1)+'s':'a few seconds';
+
+const S={ sess:null, live:false, drivers:[], me:null,
+  pos:[], iv:[], laps:[], radio:[], rc:[], stints:[],
+  cur:{pos:0,iv:0,laps:0,radio:0,rc:0},
+  posBy:{}, prevPosBy:{}, myPos:null, lastIv:null, ivRing:[], bestLap:null, lapsDone:0, lastSpd:null,
+  clock:0, t0:0, t1:0, speed:30, anchorReal:0, anchorClock:0, ended:false,
+  beep:false, vox:false, idleTicks:0, audioCtx:null };
+
+/* OpenF1 free tier rate-limits hard: serialize all calls ~400ms apart + back off on 429 */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function fetchRetry(u){
+  for(let a=0;a<5;a++){
+    const r=await fetch(API+u);
+    if(r.status===429){await sleep(1300*(a+1));continue}
+    if(!r.ok)throw new Error(u+' '+r.status);
+    return r.json();
+  }
+  throw new Error(u+' rate-limited');
+}
+let _q=Promise.resolve();
+function j(u){const p=_q.then(()=>fetchRetry(u));_q=p.then(()=>sleep(400),()=>sleep(400));return p}
+const byDate=(a,b)=>new Date(a.date||a.date_start)-new Date(b.date||b.date_start);
+
+/* ---------- boot: session + drivers ---------- */
+(async()=>{try{
+  const [sess]=await j('/sessions?session_key=latest');
+  S.sess=sess; S.t0=+new Date(sess.date_start); S.t1=+new Date(sess.date_end);
+  S.live=Date.now()>S.t0-6e5 && Date.now()<S.t1+9e5;
+  $('sessTop').textContent=`${sess.country_name} · ${sess.session_name} · ${sess.year}`;
+  $('modeBadge').textContent=S.live?'● LIVE':'REPLAY';
+  $('modeBadge').className='badge '+(S.live?'live':'replay');
+  $('sessLine').innerHTML=`LATEST SESSION → <span>${sess.session_name}, ${sess.location} (${sess.country_name}) · ${new Date(S.t0).toUTCString().slice(0,22)}</span> · ${S.live?'LIVE NOW':'FULL REPLAY AVAILABLE'}`;
+  S.drivers=await j('/drivers?session_key=latest');
+  const g=$('driverGrid');
+  g.innerHTML=S.drivers.map(d=>`
+    <button class="card" style="--tc:#${d.team_colour||'888'}" onclick="pick(${d.driver_number})">
+      <div class="num">${d.driver_number}</div>
+      ${d.headshot_url?`<img src="${d.headshot_url}" onerror="this.style.display='none'">`:''}
+      <div class="acr">${d.name_acronym||d.driver_number}</div>
+      <div class="team"><span class="chip"></span>${d.team_name||''}</div>
+      <div class="hire">JOIN THE PIT WALL →</div>
+    </button>`).join('');
+  $('loading').style.display='none';
+}catch(e){$('loading').textContent='TIMING LINK DOWN — '+e.message;$('loading').className='err'}})();
+
+/* ---------- pick driver ---------- */
+async function pick(n){
+  S.me=S.drivers.find(d=>d.driver_number===n);
+  document.documentElement.style.setProperty('--team','#'+(S.me.team_colour||'C24DFF'));
+  $('select').style.display='none';$('wall').style.display='block';$('backBtn').style.display='';
+  $('heroNum').textContent=S.me.driver_number;
+  $('dName').textContent=S.me.full_name||S.me.broadcast_name;
+  $('dTeam').innerHTML=`<b>${S.me.team_name||''}</b> · CAR ${S.me.driver_number} · YOU'RE ON THE WALL`;
+  $('feed').innerHTML='';$('deck').style.display=S.live?'none':'flex';
+  if(!S.audioCtx){try{S.audioCtx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}
+  sys('Pulling the timing record…');
+  const sk=S.sess.session_key, me=n;
+  const [pos,iv,laps,radio,rc,stints]=await Promise.all([
+    j(`/position?session_key=${sk}`), j(`/intervals?session_key=${sk}&driver_number=${me}`).catch(()=>[]),
+    j(`/laps?session_key=${sk}&driver_number=${me}`), j(`/team_radio?session_key=${sk}&driver_number=${me}`).catch(()=>[]),
+    j(`/race_control?session_key=${sk}`), j(`/stints?session_key=${sk}&driver_number=${me}`).catch(()=>[]) ]);
+  S.pos=pos.sort(byDate);S.iv=iv.sort(byDate);S.laps=laps.sort(byDate);S.radio=radio.sort(byDate);S.rc=rc.sort(byDate);S.stints=stints;
+  resetCursors();
+  S.anchorReal=performance.now(); S.anchorClock=S.t0; S.ended=false;
+  eng(`Radio check, ${S.me.first_name||S.me.name_acronym}. Loud and clear. ${S.live?"Session is live — I'll call what I see.":"Rolling the replay. Strap in."}`);
+  if(S.live) liveLoop();
+  requestAnimationFrame(tick);
+}
+$('backBtn').onclick=()=>location.reload();
+function resetCursors(){S.cur={pos:0,iv:0,laps:0,radio:0,rc:0};S.posBy={};S.prevPosBy={};S.myPos=null;S.lastIv=null;S.ivRing=[];S.bestLap=null;S.lapsDone=0;S.lastSpd=null}
+
+/* ---------- clock ---------- */
+function clockNow(){
+  if(S.live) return Date.now();
+  const c=S.anchorClock+(performance.now()-S.anchorReal)*S.speed;
+  return Math.min(c,S.t1);
+}
+document.querySelectorAll('.spd').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.spd').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  S.anchorClock=clockNow();S.anchorReal=performance.now();S.speed=+b.dataset.s;
+});
+$('seek').oninput=e=>{
+  const c=S.t0+(S.t1-S.t0)*(e.target.value/1000);
+  S.anchorClock=c;S.anchorReal=performance.now();
+  resetCursors();$('feed').innerHTML='';
+  drain(c,false);
+  sys('Resynced to '+hhmm(c)+'.');
+  if(S.myPos)eng(`Picture refresh: you're P${S.myPos}. Carry on.`);
+};
+const hhmm=ms=>new Date(ms).toISOString().slice(11,19)+' UTC';
+
+/* ---------- main loop ---------- */
+let lastRender=0;
+function tick(t){
+  const c=clockNow();
+  if(t-lastRender>450){try{drain(c,true);render(c)}catch(e){console.error(e)}lastRender=t}
+  if(!S.live&&c>=S.t1&&!S.ended){S.ended=true;eng(`That's the end of the record. P${S.myPos??'—'}. ${S.myPos&&S.myPos<=3?'Get in there. Mega.':'Good work. Debrief at the truck.'}`)}
+  requestAnimationFrame(tick);
+}
+
+/* advance all cursors up to clock c; emit feed events if loud */
+function drain(c,loud){
+  // positions
+  while(S.cur.pos<S.pos.length && +new Date(S.pos[S.cur.pos].date)<=c){
+    const r=S.pos[S.cur.pos++]; const old=S.posBy[r.driver_number]; S.posBy[r.driver_number]=r.position;
+    if(r.driver_number===S.me.driver_number){
+      const prev=S.myPos; S.myPos=r.position;
+      if(loud&&prev!=null&&prev!==r.position){
+        if(r.position<prev)eng(pickFrom([`P${r.position}. That's the move. Keep your head down.`,`P${r.position}, up ${prev-r.position}. Good. Tyres are alive.`,`P${r.position}. Lovely. Next one's ${gapAheadTxt()} up the road.`]));
+        else eng(pickFrom([`P${r.position}. We lost one. Stay calm, it comes back to us.`,`P${r.position}. Don't fight it, manage the pace, we race the stint not the corner.`]));
+      }
+    }
+  }
+  // my laps (emit at completion time)
+  while(S.cur.laps<S.laps.length){
+    const L=S.laps[S.cur.laps]; const done=+new Date(L.date_start)+((L.lap_duration||110)*1000);
+    if(done>c)break; S.cur.laps++; S.lapsDone=L.lap_number; if(L.st_speed)S.lastSpd=L.st_speed;
+    if(L.lap_duration){
+      const best=S.bestLap==null||L.lap_duration<S.bestLap;
+      if(best)S.bestLap=L.lap_duration;
+      if(loud){
+        if(L.is_pit_out_lap)eng('Out lap. Bring them in gently — no heroes in the middle sector.');
+        else if(best)eng(pickFrom([`Personal best. ${fmtLap(L.lap_duration)}. More of that, please.`,`${fmtLap(L.lap_duration)} — best lap so far. The car's underneath you.`]));
+        else if(Math.random()<.18)eng(`${fmtLap(L.lap_duration)}. Consistent. That's the job.`);
+      }
+    }
+  }
+  // my intervals
+  while(S.cur.iv<S.iv.length && +new Date(S.iv[S.cur.iv].date)<=c){
+    const r=S.iv[S.cur.iv++]; S.lastIv=r;
+    S.ivRing.push(typeof r.interval==='number'?r.interval:null); if(S.ivRing.length>14)S.ivRing.shift();
+  }
+  if(loud&&S.ivRing.length>=12){
+    const a=S.ivRing[0],b=S.ivRing[S.ivRing.length-1];
+    if(a!=null&&b!=null&&S.myPos>1){
+      if(a-b>0.9){eng(pickFrom([`Gap ahead ${b.toFixed(1)} and closing. DRS soon — set it up on the exit.`,`He's coming back to you. ${b.toFixed(1)} now. Patience, then pounce.`]))}
+      else if(b-a>0.9){eng(`Gap's ${b.toFixed(1)}, he's edging away. Manage it — we'll take him at the stop.`)}
+    }
+    S.ivRing=[];
+  }
+  // race control
+  while(S.cur.rc<S.rc.length && +new Date(S.rc[S.cur.rc].date)<=c){
+    const r=S.rc[S.cur.rc++]; if(!loud)continue;
+    const m=(r.message||'').toUpperCase();
+    const big=r.flag==='RED'||m.includes('SAFETY CAR')||m.includes('CHEQUERED')||(r.flag==='YELLOW'&&r.scope!=='Sector')||r.flag==='GREEN'&&m.includes('GREEN LIGHT')||m.includes('DRS ENABLED');
+    if(r.category==='Flag'||big){ if(bigOnly(r,m)) fia(r,m); }
+  }
+  // my team radio
+  while(S.cur.radio<S.radio.length && +new Date(S.radio[S.cur.radio].date)<=c){
+    const r=S.radio[S.cur.radio++]; if(loud)radioCard(r);
+  }
+  // idle colour
+  if(loud&&++S.idleTicks>110){S.idleTicks=0;eng(pickFrom([
+    'Hydrate. Long way to go.','Mind the kerbs at the exit, we’re seeing vibrations. Probably.','We’re watching the others. You just drive.',
+    'Fuel and tyres are exactly where we want them. Allegedly.','Quiet is good. Quiet means fast.']))}
+}
+let lastFlagKey='';
+function bigOnly(r,m){
+  const key=(r.flag||'')+(m.slice(0,20));
+  if(key===lastFlagKey)return false; lastFlagKey=key;
+  return ['RED','YELLOW','DOUBLE YELLOW','GREEN','CHEQUERED'].includes(r.flag)||m.includes('SAFETY CAR')||m.includes('DRS')||m.includes('CHEQUERED');
+}
+function fia(r,m){
+  fiaLine(r.message);
+  if(r.flag==='RED')eng('Red flag, red flag. Box this lap, pit entry open. Careful on the in-lap.');
+  else if(m.includes('SAFETY CAR'))eng('Safety car, safety car. Delta positive. Box window is open — stand by.');
+  else if(r.flag==='YELLOW'||r.flag==='DOUBLE YELLOW')eng(`Yellow ${r.scope==='Sector'?('sector '+(r.sector??'')):'on track'}. Lift and cover.`);
+  else if(m.includes('CHEQUERED'))eng(`Chequered flag. P${S.myPos??'—'}. ${S.myPos===1?'YES! Get in there!':'Good drive. In we come.'}`);
+  else if(m.includes('DRS ENABLED'))eng('DRS is on. Use it wisely.');
+  else if(r.flag==='GREEN'&&m.includes('GREEN LIGHT'))eng('Green green. Push now, build the gap.');
+}
+
+/* ---------- render ---------- */
+function render(c){
+  $('clockTxt').textContent=hhmm(c);
+  if(!S.live)$('seek').value=Math.round(1000*(c-S.t0)/(S.t1-S.t0));
+  // tower
+  const order=Object.entries(S.posBy).sort((a,b)=>a[1]-b[1]);
+  $('towerN').textContent=order.length+' CARS';
+  $('tower').innerHTML=order.map(([num,p])=>{
+    const d=S.drivers.find(x=>x.driver_number==num)||{};
+    return `<div class="trow ${num==S.me.driver_number?'me':''}">
+      <span class="p">${p}</span><span class="tchip" style="background:#${d.team_colour||'555'}"></span>
+      <span class="a">${d.name_acronym||num}</span></div>`}).join('');
+  // tiles
+  $('tPos').textContent=S.myPos??'—';
+  $('tPos').className='v'+(S.myPos===1?' best':S.myPos<=3?' good':'');
+  $('tPosS').textContent=S.myPos===1?'leading':S.myPos?`of ${order.length}`:'';
+  $('tLap').textContent=fmtLap(S.laps[S.cur.laps-1]?.lap_duration);
+  $('tLapS').textContent=S.bestLap?('best '+fmtLap(S.bestLap)):'';
+  $('tLap').className='v'+(S.laps[S.cur.laps-1]&&S.laps[S.cur.laps-1].lap_duration===S.bestLap?' good':'');
+  $('tInt').textContent=S.myPos===1?'LEAD':fmtGap(S.lastIv?.interval);
+  $('tLead').textContent=S.myPos===1?'—':fmtGap(S.lastIv?.gap_to_leader);
+  $('tLeadS').textContent=S.lapsDone?('lap '+S.lapsDone):'';
+  const st=S.stints.filter(s=>s.lap_start<=Math.max(S.lapsDone,1)).pop();
+  $('tTyre').textContent=st?st.compound[0]:'—';
+  $('tTyre').className='v'+(st&&st.compound==='SOFT'?' warn':'');
+  $('tTyreS').textContent=st?(st.compound.toLowerCase()+' · age '+(st.tyre_age_at_start+Math.max(S.lapsDone-st.lap_start,0))+' laps'):'';
+  $('tSpd').textContent=S.lastSpd??'—';
+}
+
+/* ---------- feed ---------- */
+function add(cls,who,html){
+  const e=document.createElement('div');e.className='msg '+cls;
+  e.innerHTML=`<span class="t">${hhmm(clockNow()).slice(0,8)}</span><div style="flex:1"><span class="who">${who}</span><div class="body">${html}</div></div>`;
+  $('feed').prepend(e);
+  while($('feed').children.length>70)$('feed').lastChild.remove();
+  $('feedN').textContent=$('feed').children.length+' MSGS';
+}
+function eng(txt){add('eng','ENGINEER — PIT WALL',txt);chirp();speak(txt)}
+function fiaLine(txt){add('fia','FIA RACE CONTROL',txt)}
+function sys(txt){add('sys','SYSTEM',txt)}
+function radioCard(r){
+  add('radio','TEAM RADIO — CAR '+S.me.driver_number+' (REAL)',
+   `Actual radio from the car, as broadcast.<audio controls preload="none" src="${r.recording_url}"></audio>`);
+  eng('Radio from the car coming through — have a listen.');
+}
+function pickFrom(a){return a[Math.floor(Math.random()*a.length)]}
+
+/* ---------- sound ---------- */
+function chirp(){ if(!S.beep||!S.audioCtx)return; const ctx=S.audioCtx;
+  [880,1320].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type='square';o.frequency.value=f;g.gain.value=.03;
+    o.connect(g);g.connect(ctx.destination);
+    o.start(ctx.currentTime+i*.09);o.stop(ctx.currentTime+i*.09+.06)})}
+function speak(t){ if(!S.vox||!window.speechSynthesis)return;
+  const u=new SpeechSynthesisUtterance(t.replace(/P(\d+)/g,'P $1'));u.rate=1.12;u.pitch=.85;speechSynthesis.speak(u)}
+$('sndTgl').onclick=e=>{S.beep=!S.beep;e.target.textContent=S.beep?'BEEP ON':'BEEP OFF';e.target.classList.toggle('on',S.beep);if(S.beep&&S.audioCtx)S.audioCtx.resume()};
+$('voxTgl').onclick=e=>{S.vox=!S.vox;e.target.textContent=S.vox?'VOICE ON':'VOICE OFF';e.target.classList.toggle('on',S.vox);if(!S.vox)speechSynthesis?.cancel()};
+
+/* ---------- live polling ---------- */
+async function liveLoop(){
+  if(!S.live)return;
+  try{
+    const sk=S.sess.session_key,me=S.me.driver_number;
+    const last=arr=>arr.length?encodeURIComponent(arr[arr.length-1].date):null;
+    const q=(u,arr)=>{const d=last(arr);return j(u+(d?`&date>${d}`:''))};
+    const [p,i,l,r,rc]=await Promise.all([
+      q(`/position?session_key=${sk}`,S.pos), q(`/intervals?session_key=${sk}&driver_number=${me}`,S.iv),
+      j(`/laps?session_key=${sk}&driver_number=${me}&lap_number>${S.laps.length?S.laps[S.laps.length-1].lap_number:0}`),
+      q(`/team_radio?session_key=${sk}&driver_number=${me}`,S.radio), q(`/race_control?session_key=${sk}`,S.rc)]);
+    S.pos.push(...p.sort(byDate));S.iv.push(...i.sort(byDate));S.laps.push(...l.sort(byDate));
+    S.radio.push(...r.sort(byDate));S.rc.push(...rc.sort(byDate));
+  }catch(e){/* transient */}
+  setTimeout(liveLoop,8000);
+}
+</script>
+</body>
+</html>
