@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RACE ENGINEER — your seat on the pit wall</title>
+<title>RACE ENGINEER - your seat on the pit wall</title>
 <meta name="description" content="Pick a driver. Get a race engineer. Live F1 timing, real team radio, and a voice on the wall that actually talks to you.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -128,7 +128,7 @@ h1 .alt{color:var(--faint)}
 <header><div class="wrap bar">
   <div class="brand">RACE<em>ENGINEER</em></div>
   <div class="sess" id="sessTop">connecting to timing…</div>
-  <span class="badge" id="modeBadge">—</span>
+  <span class="badge" id="modeBadge">-</span>
   <div class="spacer"></div>
   <button class="tgl" id="sndTgl">BEEP OFF</button>
   <button class="tgl" id="voxTgl">VOICE OFF</button>
@@ -138,7 +138,7 @@ h1 .alt{color:var(--faint)}
 <section id="select"><div class="wrap">
   <div class="kicker">openf1 live timing · real team radio</div>
   <h1>PICK A DRIVER.<br><span class="alt">GET A RACE ENGINEER.</span></h1>
-  <p class="sub">This is your seat on the pit wall. Live sessions stream with a ~3s delay; finished sessions <b>replay</b> with the full timing record — positions, gaps, laps, FIA messages, and your driver's <b>actual team radio</b>, surfaced the moment it happened. Your engineer reads the data and talks to you like you're the one in the car.</p>
+  <p class="sub">This is your seat on the pit wall. Live sessions stream with a ~3s delay; finished sessions <b>replay</b> with the full timing record - positions, gaps, laps, FIA messages, and your driver's <b>actual team radio</b>, surfaced the moment it happened. Your engineer reads the data and talks to you like you're the one in the car.</p>
   <div id="sessLine"></div>
   <div class="grid" id="driverGrid"></div>
   <div id="loading">CONNECTING TO TIMING TOWER…</div>
@@ -150,15 +150,15 @@ h1 .alt{color:var(--faint)}
     <div>
       <div class="panel" id="hero">
         <div id="heroNum">00</div>
-        <div id="dName">—</div>
-        <div id="dTeam">—</div>
+        <div id="dName">-</div>
+        <div id="dTeam">-</div>
         <div class="tiles">
-          <div class="tile"><div class="l">Position</div><div class="v" id="tPos">—</div><div class="s" id="tPosS"></div></div>
-          <div class="tile"><div class="l">Last lap</div><div class="v" id="tLap">—</div><div class="s" id="tLapS"></div></div>
-          <div class="tile"><div class="l">Gap ahead</div><div class="v" id="tInt">—</div><div class="s">interval</div></div>
-          <div class="tile"><div class="l">Gap to leader</div><div class="v" id="tLead">—</div><div class="s" id="tLeadS"></div></div>
-          <div class="tile"><div class="l">Tyre</div><div class="v" id="tTyre">—</div><div class="s" id="tTyreS"></div></div>
-          <div class="tile"><div class="l">Speed trap</div><div class="v" id="tSpd">—</div><div class="s">km/h</div></div>
+          <div class="tile"><div class="l">Position</div><div class="v" id="tPos">-</div><div class="s" id="tPosS"></div></div>
+          <div class="tile"><div class="l">Last lap</div><div class="v" id="tLap">-</div><div class="s" id="tLapS"></div></div>
+          <div class="tile"><div class="l">Gap ahead</div><div class="v" id="tInt">-</div><div class="s">interval</div></div>
+          <div class="tile"><div class="l">Gap to leader</div><div class="v" id="tLead">-</div><div class="s" id="tLeadS"></div></div>
+          <div class="tile"><div class="l">Tyre</div><div class="v" id="tTyre">-</div><div class="s" id="tTyreS"></div></div>
+          <div class="tile"><div class="l">Speed trap</div><div class="v" id="tSpd">-</div><div class="s">km/h</div></div>
         </div>
         <div id="deck">
           <span class="lab">REPLAY</span>
@@ -178,8 +178,8 @@ h1 .alt{color:var(--faint)}
 <script>
 const API='https://api.openf1.org/v1';
 const $=id=>document.getElementById(id);
-const fmtLap=s=>{if(s==null)return'—';const m=Math.floor(s/60),r=(s-m*60).toFixed(3);return m+':'+(r<10?'0':'')+r};
-const fmtGap=g=>{if(g==null)return'—';if(typeof g==='string')return g;return'+'+g.toFixed(1)};
+const fmtLap=s=>{if(s==null)return'-';const m=Math.floor(s/60),r=(s-m*60).toFixed(3);return m+':'+(r<10?'0':'')+r};
+const fmtGap=g=>{if(g==null)return'-';if(typeof g==='string')return g;return'+'+g.toFixed(1)};
 const gapAheadTxt=()=>S.lastIv&&typeof S.lastIv.interval==='number'?S.lastIv.interval.toFixed(1)+'s':'a few seconds';
 
 const S={ sess:null, live:false, drivers:[], me:null,
@@ -224,7 +224,7 @@ const byDate=(a,b)=>new Date(a.date||a.date_start)-new Date(b.date||b.date_start
       <div class="hire">JOIN THE PIT WALL →</div>
     </button>`).join('');
   $('loading').style.display='none';
-}catch(e){$('loading').textContent='TIMING LINK DOWN — '+e.message;$('loading').className='err'}})();
+}catch(e){$('loading').textContent='TIMING LINK DOWN - '+e.message;$('loading').className='err'}})();
 
 /* ---------- pick driver ---------- */
 async function pick(n){
@@ -245,7 +245,7 @@ async function pick(n){
   S.pos=pos.sort(byDate);S.iv=iv.sort(byDate);S.laps=laps.sort(byDate);S.radio=radio.sort(byDate);S.rc=rc.sort(byDate);S.stints=stints;
   resetCursors();
   S.anchorReal=performance.now(); S.anchorClock=S.t0; S.ended=false;
-  eng(`Radio check, ${S.me.first_name||S.me.name_acronym}. Loud and clear. ${S.live?"Session is live — I'll call what I see.":"Rolling the replay. Strap in."}`);
+  eng(`Radio check, ${S.me.first_name||S.me.name_acronym}. Loud and clear. ${S.live?"Session is live - I'll call what I see.":"Rolling the replay. Strap in."}`);
   if(S.live) liveLoop();
   requestAnimationFrame(tick);
 }
@@ -277,7 +277,7 @@ let lastRender=0;
 function tick(t){
   const c=clockNow();
   if(t-lastRender>450){try{drain(c,true);render(c)}catch(e){console.error(e)}lastRender=t}
-  if(!S.live&&c>=S.t1&&!S.ended){S.ended=true;eng(`That's the end of the record. P${S.myPos??'—'}. ${S.myPos&&S.myPos<=3?'Get in there. Mega.':'Good work. Debrief at the truck.'}`)}
+  if(!S.live&&c>=S.t1&&!S.ended){S.ended=true;eng(`That's the end of the record. P${S.myPos??'-'}. ${S.myPos&&S.myPos<=3?'Get in there. Mega.':'Good work. Debrief at the truck.'}`)}
   requestAnimationFrame(tick);
 }
 
@@ -302,8 +302,8 @@ function drain(c,loud){
       const best=S.bestLap==null||L.lap_duration<S.bestLap;
       if(best)S.bestLap=L.lap_duration;
       if(loud){
-        if(L.is_pit_out_lap)eng('Out lap. Bring them in gently — no heroes in the middle sector.');
-        else if(best)eng(pickFrom([`Personal best. ${fmtLap(L.lap_duration)}. More of that, please.`,`${fmtLap(L.lap_duration)} — best lap so far. The car's underneath you.`]));
+        if(L.is_pit_out_lap)eng('Out lap. Bring them in gently - no heroes in the middle sector.');
+        else if(best)eng(pickFrom([`Personal best. ${fmtLap(L.lap_duration)}. More of that, please.`,`${fmtLap(L.lap_duration)} - best lap so far. The car's underneath you.`]));
         else if(Math.random()<.18)eng(`${fmtLap(L.lap_duration)}. Consistent. That's the job.`);
       }
     }
@@ -316,8 +316,8 @@ function drain(c,loud){
   if(loud&&S.ivRing.length>=12){
     const a=S.ivRing[0],b=S.ivRing[S.ivRing.length-1];
     if(a!=null&&b!=null&&S.myPos>1){
-      if(a-b>0.9){eng(pickFrom([`Gap ahead ${b.toFixed(1)} and closing. DRS soon — set it up on the exit.`,`He's coming back to you. ${b.toFixed(1)} now. Patience, then pounce.`]))}
-      else if(b-a>0.9){eng(`Gap's ${b.toFixed(1)}, he's edging away. Manage it — we'll take him at the stop.`)}
+      if(a-b>0.9){eng(pickFrom([`Gap ahead ${b.toFixed(1)} and closing. DRS soon - set it up on the exit.`,`He's coming back to you. ${b.toFixed(1)} now. Patience, then pounce.`]))}
+      else if(b-a>0.9){eng(`Gap's ${b.toFixed(1)}, he's edging away. Manage it - we'll take him at the stop.`)}
     }
     S.ivRing=[];
   }
@@ -346,9 +346,9 @@ function bigOnly(r,m){
 function fia(r,m){
   fiaLine(r.message);
   if(r.flag==='RED')eng('Red flag, red flag. Box this lap, pit entry open. Careful on the in-lap.');
-  else if(m.includes('SAFETY CAR'))eng('Safety car, safety car. Delta positive. Box window is open — stand by.');
+  else if(m.includes('SAFETY CAR'))eng('Safety car, safety car. Delta positive. Box window is open - stand by.');
   else if(r.flag==='YELLOW'||r.flag==='DOUBLE YELLOW')eng(`Yellow ${r.scope==='Sector'?('sector '+(r.sector??'')):'on track'}. Lift and cover.`);
-  else if(m.includes('CHEQUERED'))eng(`Chequered flag. P${S.myPos??'—'}. ${S.myPos===1?'YES! Get in there!':'Good drive. In we come.'}`);
+  else if(m.includes('CHEQUERED'))eng(`Chequered flag. P${S.myPos??'-'}. ${S.myPos===1?'YES! Get in there!':'Good drive. In we come.'}`);
   else if(m.includes('DRS ENABLED'))eng('DRS is on. Use it wisely.');
   else if(r.flag==='GREEN'&&m.includes('GREEN LIGHT'))eng('Green green. Push now, build the gap.');
 }
@@ -366,20 +366,20 @@ function render(c){
       <span class="p">${p}</span><span class="tchip" style="background:#${d.team_colour||'555'}"></span>
       <span class="a">${d.name_acronym||num}</span></div>`}).join('');
   // tiles
-  $('tPos').textContent=S.myPos??'—';
+  $('tPos').textContent=S.myPos??'-';
   $('tPos').className='v'+(S.myPos===1?' best':S.myPos<=3?' good':'');
   $('tPosS').textContent=S.myPos===1?'leading':S.myPos?`of ${order.length}`:'';
   $('tLap').textContent=fmtLap(S.laps[S.cur.laps-1]?.lap_duration);
   $('tLapS').textContent=S.bestLap?('best '+fmtLap(S.bestLap)):'';
   $('tLap').className='v'+(S.laps[S.cur.laps-1]&&S.laps[S.cur.laps-1].lap_duration===S.bestLap?' good':'');
   $('tInt').textContent=S.myPos===1?'LEAD':fmtGap(S.lastIv?.interval);
-  $('tLead').textContent=S.myPos===1?'—':fmtGap(S.lastIv?.gap_to_leader);
+  $('tLead').textContent=S.myPos===1?'-':fmtGap(S.lastIv?.gap_to_leader);
   $('tLeadS').textContent=S.lapsDone?('lap '+S.lapsDone):'';
   const st=S.stints.filter(s=>s.lap_start<=Math.max(S.lapsDone,1)).pop();
-  $('tTyre').textContent=st?st.compound[0]:'—';
+  $('tTyre').textContent=st?st.compound[0]:'-';
   $('tTyre').className='v'+(st&&st.compound==='SOFT'?' warn':'');
   $('tTyreS').textContent=st?(st.compound.toLowerCase()+' · age '+(st.tyre_age_at_start+Math.max(S.lapsDone-st.lap_start,0))+' laps'):'';
-  $('tSpd').textContent=S.lastSpd??'—';
+  $('tSpd').textContent=S.lastSpd??'-';
 }
 
 /* ---------- feed ---------- */
@@ -390,13 +390,13 @@ function add(cls,who,html){
   while($('feed').children.length>70)$('feed').lastChild.remove();
   $('feedN').textContent=$('feed').children.length+' MSGS';
 }
-function eng(txt){add('eng','ENGINEER — PIT WALL',txt);chirp();speak(txt)}
+function eng(txt){add('eng','ENGINEER - PIT WALL',txt);chirp();speak(txt)}
 function fiaLine(txt){add('fia','FIA RACE CONTROL',txt)}
 function sys(txt){add('sys','SYSTEM',txt)}
 function radioCard(r){
-  add('radio','TEAM RADIO — CAR '+S.me.driver_number+' (REAL)',
+  add('radio','TEAM RADIO - CAR '+S.me.driver_number+' (REAL)',
    `Actual radio from the car, as broadcast.<audio controls preload="none" src="${r.recording_url}"></audio>`);
-  eng('Radio from the car coming through — have a listen.');
+  eng('Radio from the car coming through - have a listen.');
 }
 function pickFrom(a){return a[Math.floor(Math.random()*a.length)]}
 
