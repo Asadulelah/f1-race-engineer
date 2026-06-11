@@ -181,6 +181,12 @@ const $=id=>document.getElementById(id);
 const fmtLap=s=>{if(s==null)return'-';const m=Math.floor(s/60),r=(s-m*60).toFixed(3);return m+':'+(r<10?'0':'')+r};
 const fmtGap=g=>{if(g==null)return'-';if(typeof g==='string')return g;return'+'+g.toFixed(1)};
 const gapAheadTxt=()=>S.lastIv&&typeof S.lastIv.interval==='number'?S.lastIv.interval.toFixed(1)+'s':'a few seconds';
+function carAhead(){ // name the driver one position up the road
+  if(!S.myPos||S.myPos<2)return 'the leader';
+  const num=Object.keys(S.posBy).find(n=>S.posBy[n]===S.myPos-1);
+  const d=S.drivers.find(x=>x.driver_number==num);
+  return d?(d.name_acronym||('car '+num)):'the car ahead';
+}
 
 const S={ sess:null, live:false, drivers:[], me:null,
   pos:[], iv:[], laps:[], radio:[], rc:[], stints:[],
@@ -316,10 +322,24 @@ function drain(c,loud){
   if(loud&&S.ivRing.length>=12){
     const a=S.ivRing[0],b=S.ivRing[S.ivRing.length-1];
     if(a!=null&&b!=null&&S.myPos>1){
-      if(a-b>0.9){eng(pickFrom([`Gap ahead ${b.toFixed(1)} and closing. DRS soon - set it up on the exit.`,`He's coming back to you. ${b.toFixed(1)} now. Patience, then pounce.`]))}
-      else if(b-a>0.9){eng(`Gap's ${b.toFixed(1)}, he's edging away. Manage it - we'll take him at the stop.`)}
+      const tgt=carAhead();
+      if(b<1.0){eng(pickFrom([`${tgt} is ${b.toFixed(1)} ahead. DRS range. Use it.`,`You're under a second to ${tgt}. DRS open - send it when you're sure.`]))}
+      else if(a-b>0.9){eng(pickFrom([`Gap to ${tgt} ${b.toFixed(1)} and closing. Set it up on the exit.`,`${tgt} is coming back to you. ${b.toFixed(1)} now. Patience, then pounce.`]))}
+      else if(b-a>0.9){eng(`${tgt} is edging away, gap ${b.toFixed(1)}. Manage it - we'll take him at the stop.`)}
     }
     S.ivRing=[];
+  }
+  // tyre life: one pit-window call per stint once the rubber is old
+  if(loud){
+    const st=S.stints.filter(s=>s.lap_start<=Math.max(S.lapsDone,1)).pop();
+    if(st){
+      const age=st.tyre_age_at_start+Math.max(S.lapsDone-st.lap_start,0);
+      const limit=st.compound==='SOFT'?14:st.compound==='MEDIUM'?22:30;
+      if(age>=limit&&S.lastStintCall!==st.stint_number){
+        S.lastStintCall=st.stint_number;
+        eng(`Those ${st.compound.toLowerCase()}s are ${age} laps old. Box window is opening - stand by for the call.`);
+      }
+    }
   }
   // race control
   while(S.cur.rc<S.rc.length && +new Date(S.rc[S.cur.rc].date)<=c){
@@ -348,7 +368,7 @@ function fia(r,m){
   if(r.flag==='RED')eng('Red flag, red flag. Box this lap, pit entry open. Careful on the in-lap.');
   else if(m.includes('SAFETY CAR'))eng('Safety car, safety car. Delta positive. Box window is open - stand by.');
   else if(r.flag==='YELLOW'||r.flag==='DOUBLE YELLOW')eng(`Yellow ${r.scope==='Sector'?('sector '+(r.sector??'')):'on track'}. Lift and cover.`);
-  else if(m.includes('CHEQUERED'))eng(`Chequered flag. P${S.myPos??'-'}. ${S.myPos===1?'YES! Get in there!':'Good drive. In we come.'}`);
+  else if(m.includes('CHEQUERED'))eng(`Chequered flag. P${S.myPos??'-'}. ${S.myPos===1?'YES! GET IN THERE! That is what we came for!':S.myPos<=3?'PODIUM! Get the champagne arm warmed up.':S.myPos<=10?'Points in the bag. Solid day at the office.':'Not our day. We learn, we go again. In we come.'}`);
   else if(m.includes('DRS ENABLED'))eng('DRS is on. Use it wisely.');
   else if(r.flag==='GREEN'&&m.includes('GREEN LIGHT'))eng('Green green. Push now, build the gap.');
 }
